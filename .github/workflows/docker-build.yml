@@ -9,7 +9,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     # ВАЖНО: у бесплатного GitHub-раннера всего ~14GB диска и ~7GB RAM.
-    # Образ (CUDA devel + torch + flash_attn + веаса на ~5.5GB) вплотную
+    # Образ (CUDA devel + torch + flash_attn + веса на ~5.5GB) вплотную
     # подходит к этим лимитам. Если билд падает по месту на диске —
     # см. шаг "Free disk space" ниже, он уже включён по умолчанию.
     timeout-minutes: 120
@@ -54,3 +54,13 @@ jobs:
             ghcr.io/${{ steps.image.outputs.name }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Sanity check inside built image
+        run: |
+          IMAGE="ghcr.io/${{ steps.image.outputs.name }}:${{ github.sha }}"
+          echo "=== numpy version ==="
+          docker run --rm "$IMAGE" python3 -c "import numpy; print(numpy.__version__)"
+          echo "=== bpy import ==="
+          docker run --rm "$IMAGE" python3 -c "import bpy; print('bpy OK')"
+          echo "=== libxkbcommon present? ==="
+          docker run --rm "$IMAGE" bash -c "ldconfig -p | grep libxkbcommon || echo 'NOT FOUND'"
