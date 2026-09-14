@@ -2,7 +2,7 @@
 RunPod Serverless handler для UniRig (3D mesh -> rigged mesh: skeleton + skinning).
 
 Официальный репозиторий: https://github.com/VAST-AI-Research/UniRig
-Веса: https://huggingface.co/VAST-AI/UniRig (скачаны заранее на этапе Docker build)
+Веса: https://huggingface.co/VAST-AI/UniRigg (скачаны заранее на этапе Docker build)
 
 Полный пайплайн UniRig состоит из 3 шагов, каждый — отдельный bash-скрипт
 в launch/inference/:
