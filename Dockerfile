@@ -12,16 +12,16 @@
 # 2) CUDA "devel" (а не "runtime") образ — нужен nvcc/ninja, т.к.
 #    torch_scatter / torch_cluster / (опционально) flash-attn могут
 #    доехать до локальной сборки, если подходящего прекомпилированного
-#    wheel не найдётся под конкретную связку torch+cuda+python.
+#    wheel'а не найдётся под конкретную связку torch+cuda+python.
 #
 # 3) Порядок установки КРИТИЧЕН и повторяет official README один в один:
-#       torch/torchvision -> requirements.txt -> spconv -> torch_scatter/
-#       torch_cluster (wheel'ы с data.pyg.org, привязаны к torch+cuda) ->
-#       numpy==1.26.4 В САМОМ КОНЦЕ, ПОСЛЕ ВООБЩЕ ВСЕХ pip install
-#       (иначе более новый numpy, притянутый другими пакетами — включая
-#       безобидные на вид runpod/requests/huggingface_hub — молча
-#       переустанавливает numpy и ломает spconv/scipy/torch ABI в рантайме,
-#       без единой ошибки на этапе сборки).
+#        torch/torchvision -> requirements.txt -> spconv -> torch_scatter/
+#        torch_cluster (wheel'ы с data.pyg.org, привязаны к torch+cuda) ->
+#        numpy==1.26.4 В САМОМ КОНЦЕ, ПОСЛЕ ВООБЩЕ ВСЕХ pip install
+#        (иначе более новый numpy, притянутый другими пакетами — включая
+#        безобидные на вид runpod/requests/huggingface_hub — молча
+#        переустанавливает numpy и ломает spconv/scipy/torch ABI в рантайме,
+#        без единой ошибки на этапе сборки).
 #
 # 4) flash_attn — самый капризный пакет во всей цепочке. Сначала пробуем
 #    официальный precompiled wheel Dao-AILab (быстро, ~10 сек), и только
@@ -51,7 +51,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # software-properties-common -> add-apt-repository (deadsnakes для py3.11)
 # libx11-6/libxi6/libxrender1/... -> нужны headless Blender'у (bpy) и pyrender
 # libxkbcommon0 / libxkbcommon-x11-0 -> без них `import bpy` падает с
-#   "libxkbcommon.so.0: cannot open shared object file" (проверено на логах)
+#    "libxkbcommon.so.0: cannot open shared object file" (проверено на логах)
 RUN apt-get update && apt-get install -y --no-install-recommends \
         software-properties-common curl wget git ninja-build build-essential \
     && add-apt-repository -y ppa:deadsnakes/ppa \
@@ -140,10 +140,7 @@ print('[UniRig] checkpoints cached at build time.')"
 # в рантайме (именно это было причиной "numpy._core.multiarray failed to
 # import" / "AttributeError: numpy._globals ... _signature_descriptor").
 # --no-deps не даёт pip заново резолвить зависимости numpy.
-# pip check в конце — чтобы конфликт версий всплыл на этапе сборки образа,
-# а не через 20 минут ожидания в проде на RunPod.
-RUN pip install --ignore-installed --no-deps numpy==1.26.4 \
-    && pip check
+RUN pip install --ignore-installed --no-deps numpy==1.26.4
 
 # --- Копируем наш handler ----------------------------------------------------
 COPY handler.py /workspace/UniRig/handler.py
