@@ -1,0 +1,39 @@
+# Файл для справки/локального теста — сама сборка образа НЕ использует
+# этот requirements.txt напрямую: зависимости ставятся в Dockerfile в
+# строго определённом порядке (torch -> repo requirements.txt -> spconv ->
+# torch_scatter/torch_cluster -> flash_attn -> numpy==1.26.4 в конце).
+# Здесь просто зафиксирован финальный набор версий "как в образе",
+# чтобы было проще воспроизвести окружение локально (Python 3.11, CUDA 12.1).
+
+runpod
+requests
+huggingface_hub
+
+torch==2.3.1
+torchvision==0.18.1
+
+# --- зависимости из VAST-AI-Research/UniRig/requirements.txt (main) --------
+# ставятся из репозитория в Dockerfile, но версии зафиксированы и здесь
+# для справки/аудита:
+transformers==4.51.3
+python-box
+einops
+omegaconf
+pytorch_lightning
+lightning
+addict
+timm
+fast-simplification
+bpy==4.2
+trimesh
+open3d
+pyrender
+wandb
+
+# --- CUDA-специфичные пакеты, ставятся отдельными шагами в Dockerfile ------
+# spconv-cu121
+# torch_scatter / torch_cluster  (wheel'ы с data.pyg.org/whl/torch-2.3.1+cu121.html)
+# flash-attn==2.5.8              (prebuilt wheel, либо сборка из исходников)
+
+# --- ставится САМОЙ ПОСЛЕДНЕЙ, как того требует официальный README --------
+numpy==1.26.4
