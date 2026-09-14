@@ -17,8 +17,11 @@
 # 3) Порядок установки КРИТИЧЕН и повторяет official README один в один:
 #       torch/torchvision -> requirements.txt -> spconv -> torch_scatter/
 #       torch_cluster (wheel'ы с data.pyg.org, привязаны к torch+cuda) ->
-#       numpy==1.26.4 В КОНЦЕ (иначе более новый numpy, притянутый другими
-#       пакетами, ломает spconv/open3d ABI).
+#       numpy==1.26.4 В САМОМ КОНЦЕ, ПОСЛЕ ВООБЩЕ ВСЕХ pip install
+#       (иначе более новый numpy, притянутый другими пакетами — включая
+#       безобидные на вид runpod/requests/huggingface_hub — молча
+#       переустанавливает numpy и ломает spconv/scipy/torch ABI в рантайме,
+#       без единой ошибки на этапе сборки).
 #
 # 4) flash_attn — самый капризный пакет во всей цепочке. Сначала пробуем
 #    официальный precompiled wheel Dao-AILab (быстро, ~10 сек), и только
@@ -47,6 +50,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # --- Системные зависимости -------------------------------------------------
 # software-properties-common -> add-apt-repository (deadsnakes для py3.11)
 # libx11-6/libxi6/libxrender1/... -> нужны headless Blender'у (bpy) и pyrender
+# libxkbcommon0 / libxkbcommon-x11-0 -> без них `import bpy` падает с
+#   "libxkbcommon.so.0: cannot open shared object file" (проверено на логах)
 RUN apt-get update && apt-get install -y --no-install-recommends \
         software-properties-common curl wget git ninja-build build-essential \
     && add-apt-repository -y ppa:deadsnakes/ppa \
@@ -55,6 +60,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libgl1 libglu1-mesa libglib2.0-0 libsm6 libxext6 libxrender1 \
         libxi6 libxxf86vm1 libxfixes3 libxrandr2 libxinerama1 \
         libosmesa6 libegl1 libopengl0 \
+        libxkbcommon0 libxkbcommon-x11-0 \
     && rm -rf /var/lib/apt/lists/* \
     && curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11 \
     && ln -sf /usr/bin/python3.11 /usr/bin/python \
@@ -100,9 +106,6 @@ RUN pip install \
         "https://github.com/Dao-AILab/flash-attention/releases/download/v2.5.8/flash_attn-2.5.8+cu122torch2.3cxx11abiFALSE-cp311-cp311-linux_x86_64.whl" \
     || pip install flash-attn==2.5.8 --no-build-isolation
 
-# --- numpy В КОНЦЕ, ровно как велит официальный README ----------------------
-RUN pip install --ignore-installed numpy==1.26.4
-
 # --- Наши доп. зависимости под RunPod ---------------------------------------
 RUN pip install runpod requests huggingface_hub
 
@@ -129,6 +132,18 @@ tok = '${HF_TOKEN}' or None; \
 hf_hub_download(repo_id='VAST-AI/UniRig', filename='skeleton/articulation-xl_quantization_256/model.ckpt', token=tok); \
 hf_hub_download(repo_id='VAST-AI/UniRig', filename='skin/articulation-xl/model.ckpt', token=tok); \
 print('[UniRig] checkpoints cached at build time.')"
+
+# --- numpy СТРОГО ПОСЛЕДНИМ pip install в образе -----------------------------
+# Важно: этот шаг должен идти ПОСЛЕ вообще всех остальных pip install выше
+# (в т.ч. после runpod/requests/huggingface_hub), иначе они молча притянут
+# другой numpy как транзитивную зависимость и сломают ABI scipy/spconv/torch
+# в рантайме (именно это было причиной "numpy._core.multiarray failed to
+# import" / "AttributeError: numpy._globals ... _signature_descriptor").
+# --no-deps не даёт pip заново резолвить зависимости numpy.
+# pip check в конце — чтобы конфликт версий всплыл на этапе сборки образа,
+# а не через 20 минут ожидания в проде на RunPod.
+RUN pip install --ignore-installed --no-deps numpy==1.26.4 \
+    && pip check
 
 # --- Копируем наш handler ----------------------------------------------------
 COPY handler.py /workspace/UniRig/handler.py
