@@ -78,8 +78,12 @@ WORKDIR /workspace/UniRig
 # flash_attn и bpy временно вырезаем из общего списка — ставим их отдельно
 # ниже с собственной, более надёжной логикой (см. пункты 4 и комментарий
 # про bpy). Так один сорвавшийся пакет не рушит установку всех остальных.
+# --ignore-installed нужен из-за пакетов вроде `blinker`, которые в базовом
+# Ubuntu-образе стоят как distutils-installed (через apt) — pip не умеет их
+# аккуратно апгрейдить/удалять ("Cannot uninstall blinker 1.4 ... distutils
+# installed project") и падает с exit code 1 без этого флага.
 RUN grep -v -E '^(flash_attn|bpy==)' requirements.txt > requirements_main.txt \
-    && pip install -r requirements_main.txt
+    && pip install --ignore-installed -r requirements_main.txt
 
 # --- bpy (headless Blender) --------------------------------------------------
 RUN pip install bpy==4.2
@@ -97,7 +101,7 @@ RUN pip install \
     || pip install flash-attn==2.5.8 --no-build-isolation
 
 # --- numpy В КОНЦЕ, ровно как велит официальный README ----------------------
-RUN pip install numpy==1.26.4
+RUN pip install --ignore-installed numpy==1.26.4
 
 # --- Наши доп. зависимости под RunPod ---------------------------------------
 RUN pip install runpod requests huggingface_hub
