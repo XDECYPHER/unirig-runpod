@@ -7,7 +7,7 @@ and returns the result as base64.
 Expected job input:
 {
   "input": {
-    "task": "skeleкton" | "skin" | "full",   # default "skeleton"
+    "task": "skeleton" | "skin" | "full",   # default "skeleton"
     "input_ext": "glb",                     # extension of the uploaded model, default "glb"
     "model_base64": "<...>",                # OR
     "model_url": "https://.../model.glb",
@@ -57,6 +57,12 @@ def _save_input_file(job_input: dict, workdir: str) -> str:
 
 def _run(cmd: list) -> None:
     result = subprocess.run(cmd, cwd=REPO_DIR, capture_output=True, text=True)
+    # Always print, even on success — RunPod captures stdout/stderr in the
+    # worker logs, so this is the only way to see what UniRig's scripts
+    # actually did when they exit 0 but don't produce the expected file.
+    print("--- CMD ---", " ".join(cmd))
+    print("--- stdout ---\n", result.stdout)
+    print("--- stderr ---\n", result.stderr)
     if result.returncode != 0:
         raise RuntimeError(
             "Command failed: "
@@ -114,13 +120,24 @@ def handler(job):
         else:
             raise ValueError(f"Unknown task '{task}'. Use 'skeleton', 'skin', or 'full'.")
 
+        print("--- workdir contents before reading output ---")
+        print(os.listdir(workdir))
+
         with open(out_path, "rb") as f:
             out_b64 = base64.b64encode(f.read()).decode("utf-8")
 
         return {"output_base64": out_b64, "output_ext": out_ext, "task": task}
 
     except Exception as e:
-        return {"error": str(e), "trace": traceback.format_exc()}
+        try:
+            listing = os.listdir(workdir)
+        except Exception:
+            listing = "<could not list workdir>"
+        return {
+            "error": str(e),
+            "trace": traceback.format_exc(),
+            "workdir_listing": listing,
+        }
 
 
 runpod.serverless.start({"handler": handler})
