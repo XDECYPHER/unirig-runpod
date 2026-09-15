@@ -1,0 +1,8 @@
+{
+  "input": {
+    "task": "full",
+    "input_ext": "glb",
+    "model_url": "https://raw.githubusercontent.com/VAST-AI-Research/UniRig/main/examples/giraffe.glb",
+    "seed": 42
+  }
+}
