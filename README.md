@@ -8,7 +8,7 @@
 ```
 .
 ├── Dockerfile                        # образ: CUDA + UniRig + веса модели + handler
-├── handler.py                        # RunPod serverless handler (входная точка контейнера)
+├── handler.py                        # RunPod serverless handler а(входная точка контейнера)
 ├── client_example.py                 # пример вызова endpoint'а из своего кода
 ├── test_input.json                   # пример payload для локального теста
 └── .github/workflows/docker-build.yml # авто-сборка и пуш образа в GHCR при пуше в main
