@@ -11,7 +11,8 @@ WORKDIR /workspace
 
 # --- system deps needed by trimesh/pyrender/blender addon etc. ---
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git wget libgl1 libglib2.0-0 libsm6 libxrender1 libxext6 && \
+    git wget libgl1 libglib2.0-0 libsm6 libxrender1 libxext6 \
+    libxi6 libxrandr2 libxfixes3 libxcursor1 libxinerama1 libxkbcommon0 && \
     rm -rf /var/lib/apt/lists/*
 
 # --- clone UniRig ---
