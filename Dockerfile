@@ -37,11 +37,26 @@ RUN sed -i '/flash[_-]attn/Id' requirements.txt
 RUN python -m pip install --ignore-installed blinker -r requirements.txt && \
     python -m pip install numpy==1.26.4
 
+# КРИТИЧНО: requirements.txt может (через свои зависимости, например
+# diffusers/accelerate/transformers) незаметно подтянуть pip-резолвером
+# другую версию torch, отличную от той, что была в базовом образе — именно
+# это и вызывает "undefined symbol" в torch_cluster ниже, даже если мы сами
+# torch явно не переустанавливаем. Поэтому здесь принудительно фиксируем
+# ТОЧНО ту версию torch+cuda, под которую собраны torch_scatter/torch_cluster
+# (см. -f URL ниже) — что бы ни натворил requirements.txt выше.
+RUN python -m pip install --force-reinstall --no-deps \
+    torch==2.4.0 torchvision==0.19.0 \
+    --index-url https://download.pytorch.org/whl/cu124
+
 # spconv — pick the wheel matching your CUDA major version (cu124 here to match the base image)
-RUN python -m pip install spconv-cu124
+# --no-deps: чтобы резолвер не попытался снова подвинуть версию torch.
+# pccm/cumm — обязательные компаньон-пакеты spconv, ставим явно, раз убрали deps.
+RUN python -m pip install pccm cumm-cu124 && \
+    python -m pip install --no-deps spconv-cu124
 
 # torch_scatter / torch_cluster — must match the torch+cuda combo above
-RUN python -m pip install torch_scatter torch_cluster \
+# --no-deps по той же причине, что и выше
+RUN python -m pip install --no-deps torch_scatter torch_cluster \
     -f https://data.pyg.org/whl/torch-2.4.0+cu124.html
 
 # flash-attn is notoriously fragile to build. Try the prebuilt wheel; if it's
