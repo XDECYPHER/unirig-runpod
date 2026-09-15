@@ -7,7 +7,7 @@ and returns the result as base64.
 Expected job input:
 {
   "input": {
-    "task": "skeleton" | "skin" | "full",   # default "skeleton"
+    "task": "skeleкton" | "skin" | "full",   # default "skeleton"
     "input_ext": "glb",                     # extension of the uploaded model, default "glb"
     "model_base64": "<...>",                # OR
     "model_url": "https://.../model.glb",
