@@ -20,8 +20,14 @@ WORKDIR /workspace/UniRig
 
 # --- python deps, following the official UniRig install steps ---
 RUN python -m pip install --upgrade pip && \
-    python -m pip install torch torchvision && \
-    python -m pip install -r requirements.txt && \
+    python -m pip install torch torchvision
+
+# requirements.txt lists flash-attn, which fails to build here because torch
+# isn't fully set up yet at this point. Strip it out and install it as its
+# own step further down instead.
+RUN sed -i '/flash[_-]attn/Id' requirements.txt
+
+RUN python -m pip install --ignore-installed blinker -r requirements.txt && \
     python -m pip install numpy==1.26.4
 
 # spconv — pick the wheel matching your CUDA major version (cu124 here to match the base image)
@@ -31,11 +37,11 @@ RUN python -m pip install spconv-cu124
 RUN python -m pip install torch_scatter torch_cluster \
     -f https://data.pyg.org/whl/torch-2.4.0+cu124.html
 
-# flash-attn is notoriously fragile to build. Try the prebuilt wheel first;
-# if this RUN step fails during `docker build`, see
-# https://github.com/Dao-AILab/flash-attention for a version matching
-# your torch/cuda/python combo and pin it explicitly here.
-RUN python -m pip install flash-attn --no-build-isolation
+# flash-attn is notoriously fragile to build. Try the prebuilt wheel; if it's
+# not available for this torch/cuda/python combo, don't fail the whole build —
+# fall back and check at runtime whether UniRig still works without it.
+RUN python -m pip install flash-attn --no-build-isolation || \
+    echo "flash-attn wheel not available for this combo — continuing without it"
 
 # --- serverless glue ---
 RUN python -m pip install runpod huggingface_hub requests
