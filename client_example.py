@@ -1,7 +1,7 @@
 """
 Minimal example of calling the deployed UniRig RunPod serverless endpoint
 from your own Python code (e.g. where you already pick which 3D model to rig).
-
+к
 Set these two env vars first:
   RUNPOD_API_KEY   - from RunPod > Settings > API Keys
   RUNPOD_ENDPOINT_ID - from your Serverless endpoint's dashboard page
