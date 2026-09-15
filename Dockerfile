@@ -20,8 +20,14 @@ RUN git clone --depth 1 https://github.com/VAST-AI-Research/UniRig.git /workspac
 WORKDIR /workspace/UniRig
 
 # --- python deps, following the official UniRig install steps ---
-RUN python -m pip install --upgrade pip && \
-    python -m pip install torch torchvision
+# NOTE: torch/torchvision уже есть в базовом образе runpod/pytorch:2.4.0-...
+# Переустанавливать их без версии НЕЛЬЗЯ — pip подтянет последний torch с PyPI
+# (2.5/2.6/...), затрёт torch 2.4.0, и torch_scatter/torch_cluster (собранные
+# ниже строго под torch-2.4.0+cu124) перестанут грузиться:
+#   OSError: ... undefined symbol: _ZN5torch3jit17parseSchemaOrNameERKSsb
+# Если requirements.txt реально требует другую версию torch — пиши её явно и
+# синхронно с версией в -f https://data.pyg.org/whl/torch-X.Y.Z+cuXXX.html ниже.
+RUN python -m pip install --upgrade pip
 
 # requirements.txt lists flash-attn, which fails to build here because torch
 # isn't fully set up yet at this point. Strip it out and install it as its
@@ -47,10 +53,20 @@ RUN python -m pip install flash-attn --no-build-isolation || \
 # --- serverless glue ---
 RUN python -m pip install runpod huggingface_hub requests
 
+# --- local test server deps (не обязательны для прод-воркера, но легковесны) ---
+RUN python -m pip install fastapi "uvicorn[standard]" python-multipart
+
 # --- prefetch model weights at BUILD time so cold starts don't re-download them ---
 RUN python -c "from huggingface_hub import snapshot_download; \
 snapshot_download('VAST-AI/UniRig', local_dir='/workspace/UniRig/.cache/unirig_ckpt')"
 
 COPY handler.py /workspace/UniRig/handler.py
+COPY local_test_api.py /workspace/UniRig/local_test_api.py
+
+# По умолчанию контейнер стартует как RunPod serverless worker.
+# Для локального теста своими моделями (без RunPod) запусти контейнер так:
+#   docker run --gpus all -p 8002:8002 --entrypoint python <image> local_test_api.py
+# и открой http://localhost:8002/docs
+EXPOSE 8002
 
 CMD ["python", "-u", "handler.py"]
